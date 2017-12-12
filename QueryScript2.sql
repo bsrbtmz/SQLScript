@@ -1,0 +1,112 @@
+use TekServis
+
+go
+create function fn_GarantiTeslim (@garanti bit,@teslim money)
+returns money 
+begin
+if(@garanti=1)
+	begin
+	return @teslim*0;
+	end
+return @teslim
+end
+
+go
+select Urun.IslemNo,Urun.Garantilimi ,dbo.fn_GarantiTeslim(Garantilimi,TeslimBedeli) as Sonuc from Urun,UrunTeslim
+
+go
+create table PersonelDelete
+(
+id int,
+ad nvarchar(50),
+soyad nvarchar(50),
+dogumTarihi datetime,
+iseGirisTarihi datetime,
+email nvarchar(50),
+telefon nchar(15),
+DeleteDate datetime
+);
+go
+create trigger trgDelete on dbo.Personel
+instead of delete
+as
+	declare @id int;
+	declare @ad nvarchar(50);
+	declare @soyad nvarchar(50);
+	declare @dogumTarihi datetime;
+	declare @iseGirisTarihi datetime;
+	declare @email nvarchar(50);
+	declare @telefon nchar(15);	
+	declare @DeleteDate datetime;
+
+	select @id=Id from deleted;
+	select @ad=ad from deleted;
+	select @soyad=soyad from deleted;
+	select @dogumTarihi=dogumTarihi from deleted;
+	select @iseGirisTarihi=IseGirisTarihi from deleted;
+	select @email=email from deleted;
+	select @telefon=telefon from deleted;
+	
+	set @DeleteDate=GETDATE();
+	if (@id is not null )
+	 begin 
+	 insert into PersonelDelete (id, ad,soyad,dogumTarihi,iseGirisTarihi,email,telefon)
+	 values (@id,@ad,@soyad,@dogumTarihi,@iseGirisTarihi,@email,@telefon)
+	 end
+	 delete from Personel where Id=@id
+
+go
+select Ad,Soyad,[2015.01.15] as [2015 Ocak] , [2016.01.15] as [2016 Ocak] ,[2017.01.15] as [2017 Ocak] 
+from 
+(select Personel.Ad,Personel.Soyad,UrunTeslim.ServisBedeli,UrunTeslim.TeslimTarihi 
+from UrunTeslim, Personel 
+where Personel.Id=UrunTeslim.TeslimEdenPersonelId) as Sonuc
+Pivot
+(sum(ServisBedeli) for TeslimTarihi in ([2015.01.15],[2016.01.15],[2017.01.15])) as SonucPivot
+
+
+go
+create procedure sp_ServisDurumFiltrele 
+@durum nvarchar(50)
+as
+select Urun.IslemNo,ServisDurum.ServisDurum from Detay,ServisDurum,Urun,UrunTeslim 
+where Detay.ServisDurumId=ServisDurum.Id 
+and Urun.Id=UrunTeslim.UrunId 
+and UrunTeslim.Id=Detay.UrunTeslimId and ServisDurum=@durum
+
+exec dbo.sp_ServisDurumFiltrele 'TAMÝRDE'
+
+
+GO
+create procedure procMusteriAra
+@kosul nvarchar(50)
+as
+select* from Musteri,AdresDetay,MusteriDetay 
+where Musteri.Id=MusteriDetay.MusteriId and AdresDetay.Id=MusteriDetay.AdresId 
+and Musteri.Adi like '%'+@kosul+'%'
+
+go
+exec dbo.procMusteriAra 'BA'
+
+
+go
+CREATE PROC SP_TeslimBedeli
+( @personelId int )
+AS
+BEGIN
+Select SUM(TeslimBedeli) as Total_Maas FROM UrunTeslim where UrunTeslim.TeslimEdenPersonelId=@personelId 
+END
+go 
+EXEC SP_TeslimBedeli 3
+
+go
+CREATE PROC sp_ServisBedeli
+( @personelId int )
+AS
+BEGIN
+Select SUM(ServisBedeli) as Total_Maas FROM UrunTeslim where UrunTeslim.TeslimEdenPersonelId=@personelId 
+END
+
+go
+exec sp_ServisBedeli 2
+
