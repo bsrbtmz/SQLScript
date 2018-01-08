@@ -74,7 +74,7 @@ where Detay.ServisDurumId=ServisDurum.Id
 and Urun.Id=UrunTeslim.UrunId 
 and UrunTeslim.Id=Detay.UrunTeslimId and ServisDurum=@durum
 
-exec dbo.sp_ServisDurumFiltrele 'TAM›RDE'
+exec dbo.sp_ServisDurumFiltrele 'TAM√ùRDE'
 
 
 GO
